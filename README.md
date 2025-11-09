@@ -231,6 +231,17 @@ pnpm format:check         # Check code formatting without modifying
 pnpm test                 # Run all tests using TurboRepo
 pnpm commit               # Interactive commit with Commitizen
 pnpm changeset            # Create version changeset
+
+# Database
+pnpm db:migrate           # Run database migrations
+pnpm db:revert            # Revert last migration
+pnpm db:generate          # Generate new migration
+pnpm db:reset             # Reset database
+pnpm seed                 # Seed database with test data
+pnpm seed:clear           # Clear all seeded data
+
+# Cache
+pnpm cache:clear          # Clear Redis cache (FLUSHALL)
 ```
 
 ### API (Backend)

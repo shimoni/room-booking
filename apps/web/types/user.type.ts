@@ -1,24 +1,15 @@
 import { z } from 'zod';
 
 /**
- * Schema representing a user object.
+ * Schema representing a user object from the backend.
  */
 export const UserSchema = z.object({
-  id: z.string().min(1),
+  id: z.coerce.number(),
   email: z.string().email(),
-  username: z.string().min(1),
-  isEmailVerified: z.boolean(),
-  emailVerifiedAt: z.coerce.date().nullish(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-  profile: z.object({
-    name: z.string().min(1),
-    gender: z.string().min(1),
-    phoneNumber: z.string().nullish(),
-    profilePicture: z.string().nullish(),
-    dateOfBirth: z.coerce.date().nullish(),
-    address: z.string().nullish(),
-  }),
+  first_name: z.string().nullish(),
+  last_name: z.string().nullish(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
 });
 export type User = z.infer<typeof UserSchema>;
 

@@ -1,39 +1,31 @@
 import { Session } from 'next-auth';
-import { AdapterSession, AdapterUser } from 'next-auth/adapters';
 import { JWT } from 'next-auth/jwt';
 
 /**
- * Maps the JWT token data to the NextAuth session object.
+ * Handles the session callback in NextAuth to populate session data from the JWT.
+ *
+ * This function extracts user information from the decoded JWT token and attaches
+ * it to the session object, making it accessible via `useSession()` on the client.
  *
  * @param session - The current session object.
- * @param token - The JWT token containing user information.
- * @returns The updated session with detailed user data from the token.
+ * @param token - The JWT token containing user data.
+ * @returns The updated session object with user information.
  */
 export const sessionCallback = ({
   session,
   token,
 }: {
-  session: {
-    user: AdapterUser;
-  } & AdapterSession &
-    Session;
+  session: Session;
   token: JWT;
 }): Session => {
-  if (token) {
-    const { user } = token;
-    return {
-      ...session,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        isEmailVerified: user.isEmailVerified,
-        emailVerifiedAt: user.emailVerifiedAt,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        profile: user.profile,
-        tokens: user.tokens,
-      },
+  if (session && token.user) {
+    session.user = {
+      id: token.user.id,
+      email: token.user.email,
+      first_name: token.user.first_name,
+      last_name: token.user.last_name,
+      created_at: token.user.created_at,
+      updated_at: token.user.updated_at,
     };
   }
   return session;

@@ -12,6 +12,7 @@
     "build": "turbo build",
     "build:api": "pnpm build --filter=api",
     "build:web": "pnpm build --filter=web",
+    "cache:clear": "docker exec -it room-booking-redis redis-cli FLUSHALL",
     "changeset": "changeset",
     "clear:modules": "npx npkill",
     "commit": "cz",

@@ -27,12 +27,17 @@ export class ApiError extends Error {
   }
 }
 
+// Track if we're currently refreshing to avoid multiple simultaneous refresh calls
+let isRefreshing = false;
+let refreshPromise: Promise<void> | null = null;
+
 /**
- * Base fetch wrapper with error handling
+ * Base fetch wrapper with error handling and automatic token refresh
  */
 async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},
+  isRetry = false,
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -44,6 +49,55 @@ async function apiFetch<T>(
       ...options.headers,
     },
   });
+
+  // Handle 401 Unauthorized - try to refresh token once
+  if (
+    response.status === 401 &&
+    !isRetry &&
+    endpoint !== '/auth/refresh' &&
+    endpoint !== '/auth/sign-in' &&
+    endpoint !== '/auth/sign-up'
+  ) {
+    try {
+      // If already refreshing, wait for that to complete
+      if (isRefreshing && refreshPromise) {
+        await refreshPromise;
+      } else {
+        // Start refresh process
+        isRefreshing = true;
+        refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }).then(async (refreshResponse) => {
+          if (!refreshResponse.ok) {
+            throw new Error('Token refresh failed');
+          }
+        });
+
+        await refreshPromise;
+      }
+
+      // Reset refresh state
+      isRefreshing = false;
+      refreshPromise = null;
+
+      // Retry the original request with new tokens
+      return apiFetch<T>(endpoint, options, true);
+    } catch {
+      // Refresh failed - redirect to sign in
+      isRefreshing = false;
+      refreshPromise = null;
+
+      // Only redirect on client side
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/sign-in';
+      }
+      throw new ApiError(401, 'Session expired. Please sign in again.');
+    }
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

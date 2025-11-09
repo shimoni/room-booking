@@ -96,9 +96,6 @@ export const {
    */
   pages: {
     signIn: '/auth/sign-in',
-    signOut: '/auth/sign-out',
     error: '/auth/sign-in',
-    verifyRequest: '/auth/confirm-email',
-    newUser: '/auth/sign-up',
   },
 });

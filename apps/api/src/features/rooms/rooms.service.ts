@@ -49,16 +49,33 @@ export class RoomsService {
     // Build query
     const queryBuilder = this.roomRepository.createQueryBuilder('room');
 
-    // Location filter (search in city, country, or address)
+    // Location filter (search in city, country, or address) - case insensitive
+    // Supports both "City, Country" format and single search terms
     if (location) {
-      queryBuilder.andWhere(
-        `(
-          JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.city')) LIKE :location OR
-          JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.country')) LIKE :location OR
-          JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.address')) LIKE :location
-        )`,
-        { location: `%${location}%` },
-      );
+      // Check if location is in "City, Country" format
+      const parts = location.split(',').map((part) => part.trim());
+
+      if (parts.length === 2) {
+        // Format: "City, Country" - search for city AND country
+        const [city, country] = parts;
+        queryBuilder.andWhere(
+          `(
+            LOWER(JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.city'))) LIKE LOWER(:city) AND
+            LOWER(JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.country'))) LIKE LOWER(:country)
+          )`,
+          { city: `%${city}%`, country: `%${country}%` },
+        );
+      } else {
+        // Single term - search across city, country, or address
+        queryBuilder.andWhere(
+          `(
+            LOWER(JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.city'))) LIKE LOWER(:location) OR
+            LOWER(JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.country'))) LIKE LOWER(:location) OR
+            LOWER(JSON_UNQUOTE(JSON_EXTRACT(room.location, '$.address'))) LIKE LOWER(:location)
+          )`,
+          { location: `%${location}%` },
+        );
+      }
     }
 
     // Price range filters
@@ -173,5 +190,42 @@ export class RoomsService {
       checkIn,
       checkOut,
     );
+  }
+
+  /**
+   * Get unique locations for autocomplete
+   * Returns unique city, country combinations
+   */
+  async getUniqueLocations(): Promise<string[]> {
+    const cacheKey = 'rooms:locations';
+
+    // Try cache first (1 hour TTL)
+    const cached = await this.cacheManager.get<string[]>(cacheKey);
+    if (cached) {
+      this.logger.debug('Cache hit for locations');
+      return cached;
+    }
+
+    const rooms = await this.roomRepository.find({
+      select: ['location'],
+    });
+
+    // Extract unique location strings
+    const locationSet = new Set<string>();
+    rooms.forEach((room) => {
+      if (room.location) {
+        const { city, country } = room.location;
+        if (city && country) {
+          locationSet.add(`${city}, ${country}`);
+        }
+      }
+    });
+
+    const locations = Array.from(locationSet).sort();
+
+    // Cache for 1 hour (3600 seconds)
+    await this.cacheManager.set(cacheKey, locations, 3600 * 1000);
+
+    return locations;
   }
 }

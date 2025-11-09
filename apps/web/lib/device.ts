@@ -40,7 +40,24 @@ export const getDeviceInfo = async (): Promise<DeviceInfo> => {
   const header = await headers();
   const userAgent = header.get('user-agent') || '';
   const parser = new UAParser(userAgent);
-  const { ip, location } = await getLocationFromIp();
+
+  // Add timeout and error handling for external API call
+  let ip = 'unknown';
+  let location = 'unknown';
+
+  try {
+    const result = await Promise.race([
+      getLocationFromIp(),
+      new Promise<{ ip: string; location: string }>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), 3000),
+      ),
+    ]);
+    ip = result.ip;
+    location = result.location;
+  } catch (error) {
+    console.warn('Failed to fetch IP/location info:', error);
+    // Continue with default values
+  }
 
   return {
     device_type: parser.getDevice().type,

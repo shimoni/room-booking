@@ -29,9 +29,9 @@ export class UsersService {
   }
 
   /**
-   * Gets a user by username.
+   * Gets a user by email.
    *
-   * @param {string} identifier - The username of the user to find.
+   * @param {string} identifier - The email of the user to find.
    * @returns {Promise<User>} A promise that resolves to the user entity.
    * @throws {NotFoundException} If the user is not found.
    */
@@ -40,6 +40,7 @@ export class UsersService {
       where: { email: identifier },
       relations: ['bookings'],
     });
+
     if (!user) {
       throw new NotFoundException('User not found.');
     }

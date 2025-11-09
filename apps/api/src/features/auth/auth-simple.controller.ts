@@ -11,6 +11,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthServiceSimple } from './auth-simple.service';
+import { SignInUserDto } from './dto/signIn-user.dto';
 
 // Fastify Response type with cookie methods
 interface FastifyResponseWithCookies {
@@ -26,11 +27,11 @@ export class AuthSimpleController {
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
   async signIn(
-    @Body() body: { email: string; password: string },
+    @Body() body: SignInUserDto,
     @Res({ passthrough: true }) response: FastifyResponseWithCookies,
   ) {
     const { user, tokens } = await this.authService.signIn(
-      body.email,
+      body.identifier,
       body.password,
     );
 
@@ -47,15 +48,15 @@ export class AuthSimpleController {
     body: {
       email: string;
       password: string;
-      firstName: string;
-      lastName: string;
+      firstName?: string;
+      lastName?: string;
     },
   ) {
     const user = await this.authService.signUp(
       body.email,
       body.password,
-      body.firstName,
-      body.lastName,
+      body.firstName || '',
+      body.lastName || '',
     );
 
     return {

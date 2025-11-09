@@ -1,13 +1,16 @@
-import { Public } from '@/common/decorators';
 import { UserResponse } from '@/common/interfaces/auth.interface';
 import { Controller, Get, Param } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 
 /**
  * Controller for managing user-related operations.
  *
  * Provides endpoints to fetch all users and fetch a single user by identifier.
+ * All endpoints require authentication.
  */
+@ApiTags('users')
+@ApiBearerAuth()
 @Controller('users')
 export class UsersController {
   /**
@@ -22,7 +25,6 @@ export class UsersController {
    *
    * @returns {Promise<{ message: string; data: UserResponse[] }>} An object containing a message and an array of user data without passwords.
    */
-  @Public()
   @Get()
   async findAll(): Promise<{ message: string; data: UserResponse[] }> {
     const users = await this.usersService.findAll();
@@ -39,7 +41,6 @@ export class UsersController {
    * @param {string} identifier - The identifier of the user (e.g., ID or username).
    * @returns {Promise<{ message: string; data: UserResponse }>} An object containing a message and the user data without password.
    */
-  @Public()
   @Get(':identifier')
   async findOne(
     @Param('identifier') identifier: string,

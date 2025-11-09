@@ -37,19 +37,16 @@ export const jwtCallback = ({
   }
 
   if (trigger === 'signIn') {
-    if (user) {
+    if (user && 'id' in user) {
       return {
         ...token,
         user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          isEmailVerified: user.isEmailVerified,
-          emailVerifiedAt: user.emailVerifiedAt,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-          profile: user.profile,
-          tokens: user.tokens,
+          id: user.id as number,
+          email: user.email as string,
+          first_name: (user as User).first_name,
+          last_name: (user as User).last_name,
+          created_at: (user as User).created_at,
+          updated_at: (user as User).updated_at,
         },
       };
     }

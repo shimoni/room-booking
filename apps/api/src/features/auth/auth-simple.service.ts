@@ -33,10 +33,13 @@ export class AuthServiceSimple {
   ) {}
 
   async signIn(
-    email: string,
+    identifier: string,
     password: string,
   ): Promise<{ user: User; tokens: TokenPair }> {
-    const user = await this.userRepository.findOne({ where: { email } });
+    // identifier is the email address
+    const user = await this.userRepository.findOne({
+      where: { email: identifier },
+    });
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -105,7 +108,8 @@ export class AuthServiceSimple {
   }
 
   private async generateTokens(user: User): Promise<TokenPair> {
-    const payload = { sub: user.id, email: user.email };
+    // Use userId instead of sub to match AuthenticatedUser interface
+    const payload = { userId: user.id, email: user.email };
 
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(payload, {

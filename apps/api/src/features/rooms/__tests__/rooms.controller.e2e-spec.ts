@@ -1,5 +1,8 @@
 import { AppModule } from '@/app.module';
+import { Env } from '@/common/utils';
 import { DbHelper } from '@/test/helpers/db-helper';
+import fastifyCookie from '@fastify/cookie';
+import { ConfigService } from '@nestjs/config';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -12,6 +15,25 @@ describe('RoomsController (e2e)', () => {
   let dbHelper: DbHelper;
   let dataSource: DataSource;
   let testRoomIds: number[] = [];
+  let accessToken: string;
+
+  /**
+   * Helper function to sign in and get access token
+   */
+  const signInAndGetToken = async (): Promise<string> => {
+    const signInRes = await app.inject({
+      method: 'POST',
+      url: '/auth/sign-in',
+      payload: {
+        identifier: 'test1@example.com',
+        password: 'Test123!',
+      },
+    });
+
+    const cookies = signInRes.cookies;
+    const accessCookie = cookies.find((c) => c.name === 'access_token');
+    return accessCookie?.value || '';
+  };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -25,14 +47,24 @@ describe('RoomsController (e2e)', () => {
       new FastifyAdapter(),
     );
 
+    // Register cookie plugin (required for auth cookie handling)
+    const configService = app.get(ConfigService<Env>);
+    await app.register(fastifyCookie, {
+      secret: configService.get('JWT_SECRET') as string,
+    });
+
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
 
     // Clean and seed database
     await dbHelper.deleteDbData();
+    await dbHelper.createTestUsers(); // Create test users for authentication
     const rooms = await dbHelper.createTestRooms();
     // Ensure IDs are numbers (they might be strings from BigInt columns)
     testRoomIds = rooms.map((room) => Number(room.id));
+
+    // Get access token for authenticated requests
+    accessToken = await signInAndGetToken();
   });
 
   afterEach(async () => {
@@ -45,6 +77,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/search',
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -60,6 +93,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/search?location=New York',
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -77,6 +111,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/search?minPrice=${minPrice}&maxPrice=${maxPrice}`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -92,6 +127,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/search?capacity=${minCapacity}`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -107,6 +143,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/search?checkIn=${checkIn}&checkOut=${checkOut}`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -119,6 +156,7 @@ describe('RoomsController (e2e)', () => {
       const firstPageRes = await app.inject({
         method: 'GET',
         url: '/rooms/search?limit=2',
+        cookies: { access_token: accessToken },
       });
 
       expect(firstPageRes.statusCode).toBe(200);
@@ -129,6 +167,7 @@ describe('RoomsController (e2e)', () => {
         const secondPageRes = await app.inject({
           method: 'GET',
           url: `/rooms/search?limit=2&cursor=${firstPage.nextCursor}`,
+          cookies: { access_token: accessToken },
         });
 
         expect(secondPageRes.statusCode).toBe(200);
@@ -141,6 +180,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/search?location=New York&minPrice=150&capacity=2',
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -160,6 +200,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -176,6 +217,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/99999',
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(404);
@@ -187,9 +229,76 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/invalid',
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('GET /rooms/autocomplete/locations', () => {
+    it('should return unique location strings', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/rooms/autocomplete/locations',
+        cookies: { access_token: accessToken },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThan(0);
+
+      // Each location should be a string in "City, Country" format
+      body.forEach((location: any) => {
+        expect(typeof location).toBe('string');
+        expect(location).toMatch(/^.+,\s.+$/); // Pattern: "City, Country"
+      });
+
+      // Check that locations are unique
+      const uniqueLocations = new Set(body);
+      expect(uniqueLocations.size).toBe(body.length);
+    });
+
+    it('should return sorted locations alphabetically', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/rooms/autocomplete/locations',
+        cookies: { access_token: accessToken },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const locations = res.json();
+
+      // Verify alphabetical ordering
+      for (let i = 0; i < locations.length - 1; i++) {
+        expect(
+          locations[i].localeCompare(locations[i + 1]),
+        ).toBeLessThanOrEqual(0);
+      }
+    });
+
+    it('should cache location results', async () => {
+      // First request - cache miss
+      const firstRes = await app.inject({
+        method: 'GET',
+        url: '/rooms/autocomplete/locations',
+        cookies: { access_token: accessToken },
+      });
+      expect(firstRes.statusCode).toBe(200);
+      const firstBody = firstRes.json();
+
+      // Second request - should be cached
+      const secondRes = await app.inject({
+        method: 'GET',
+        url: '/rooms/autocomplete/locations',
+        cookies: { access_token: accessToken },
+      });
+      expect(secondRes.statusCode).toBe(200);
+      const secondBody = secondRes.json();
+
+      // Results should be identical
+      expect(firstBody).toEqual(secondBody);
     });
   });
 
@@ -201,6 +310,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -217,6 +327,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}/availability?checkIn=2025-02-10&checkOut=2025-02-05`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(400);
@@ -229,6 +340,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}/availability?checkIn=2020-01-01&checkOut=2020-01-05`,
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(400);
@@ -238,6 +350,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/99999/availability?checkIn=2025-02-01&checkOut=2025-02-05',
+        cookies: { access_token: accessToken },
       });
 
       expect(res.statusCode).toBe(404);
@@ -252,6 +365,7 @@ describe('RoomsController (e2e)', () => {
       const firstRes = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}`,
+        cookies: { access_token: accessToken },
       });
       expect(firstRes.statusCode).toBe(200);
 
@@ -259,6 +373,7 @@ describe('RoomsController (e2e)', () => {
       const secondRes = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}`,
+        cookies: { access_token: accessToken },
       });
       expect(secondRes.statusCode).toBe(200);
 
@@ -272,12 +387,14 @@ describe('RoomsController (e2e)', () => {
       const firstRes = await app.inject({
         method: 'GET',
         url: `/rooms/search?${query}`,
+        cookies: { access_token: accessToken },
       });
       expect(firstRes.statusCode).toBe(200);
 
       const secondRes = await app.inject({
         method: 'GET',
         url: `/rooms/search?${query}`,
+        cookies: { access_token: accessToken },
       });
       expect(secondRes.statusCode).toBe(200);
 

@@ -1,4 +1,3 @@
-import { Public } from '@/common/decorators';
 import {
   Controller,
   Get,
@@ -7,15 +6,36 @@ import {
   Query,
   ValidationPipe,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SearchRoomsDto } from './dto/search-rooms.dto';
 import { RoomsService } from './rooms.service';
 
 @ApiTags('rooms')
 @Controller('rooms')
-@Public() // Room search is public, no authentication required
+@ApiBearerAuth() // All room endpoints now require authentication
 export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
+
+  // Autocomplete endpoint for location suggestions
+  @Get('autocomplete/locations')
+  @ApiOperation({ summary: 'Get unique locations for autocomplete' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns list of unique locations',
+    schema: {
+      type: 'array',
+      items: { type: 'string' },
+      example: ['New York, USA', 'London, UK', 'Tokyo, Japan'],
+    },
+  })
+  async getLocations() {
+    return this.roomsService.getUniqueLocations();
+  }
 
   @Get('search')
   @ApiOperation({
@@ -26,14 +46,6 @@ export class RoomsController {
     @Query(new ValidationPipe({ transform: true })) dto: SearchRoomsDto,
   ) {
     return this.roomsService.searchRooms(dto);
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get room details by ID' })
-  @ApiResponse({ status: 200, description: 'Returns room details' })
-  @ApiResponse({ status: 404, description: 'Room not found' })
-  async getRoomById(@Param('id', ParseIntPipe) id: number) {
-    return this.roomsService.getRoomById(id);
   }
 
   @Get(':id/availability')
@@ -68,5 +80,13 @@ export class RoomsController {
       checkOut,
       available,
     };
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get room details by ID' })
+  @ApiResponse({ status: 200, description: 'Returns room details' })
+  @ApiResponse({ status: 404, description: 'Room not found' })
+  async getRoomById(@Param('id', ParseIntPipe) id: number) {
+    return this.roomsService.getRoomById(id);
   }
 }
