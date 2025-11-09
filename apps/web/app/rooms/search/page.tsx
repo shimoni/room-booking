@@ -1,5 +1,5 @@
-import LocationAutocomplete from '@/components/location-autocomplete';
 import LogoIcon from '@/components/logo-icon';
+import SearchForm from '@/components/search-form';
 import Session from '@/components/session';
 import { searchRooms } from '@/server/rooms.server';
 import { Button } from '@repo/shadcn/button';
@@ -10,8 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@repo/shadcn/card';
-import { Input } from '@repo/shadcn/input';
-import { Label } from '@repo/shadcn/label';
 import { ModeSwitcher } from '@repo/shadcn/mode-switcher';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -148,57 +146,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <h1 className="text-3xl font-bold mb-4">Search Rooms</h1>
 
           {/* Search Filters */}
-          <Card>
-            <CardContent className="p-6">
-              <form method="GET" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location (Optional)</Label>
-                    <LocationAutocomplete defaultValue={params.location} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="checkIn">Check-in (Optional)</Label>
-                    <Input
-                      id="checkIn"
-                      name="checkIn"
-                      type="date"
-                      defaultValue={params.checkIn}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="checkOut">Check-out (Optional)</Label>
-                    <Input
-                      id="checkOut"
-                      name="checkOut"
-                      type="date"
-                      defaultValue={params.checkOut}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Guests (Optional)</Label>
-                    <Input
-                      id="capacity"
-                      name="capacity"
-                      type="number"
-                      min="1"
-                      placeholder="Any capacity"
-                      defaultValue={params.capacity}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button type="submit">Search</Button>
-                  <Button type="button" variant="outline" asChild>
-                    <Link href="/rooms/search">Clear</Link>
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <SearchForm
+            variant="search"
+            defaultValues={{
+              location: params.location,
+              checkIn: params.checkIn,
+              checkOut: params.checkOut,
+              capacity: params.capacity,
+            }}
+          />
         </div>
 
         <Suspense

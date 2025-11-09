@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsDateString,
   IsInt,
@@ -10,14 +10,17 @@ import {
 export class SearchRoomsDto {
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   location?: string; // City or country search
 
   @IsOptional()
   @IsDateString()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   checkIn?: string; // ISO date string
 
   @IsOptional()
   @IsDateString()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   checkOut?: string; // ISO date string
 
   @IsOptional()

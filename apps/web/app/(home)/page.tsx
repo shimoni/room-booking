@@ -1,10 +1,6 @@
-import LocationAutocomplete from '@/components/location-autocomplete';
 import LogoIcon from '@/components/logo-icon';
+import SearchForm from '@/components/search-form';
 import Session from '@/components/session';
-import { Button } from '@repo/shadcn/button';
-import { Card, CardContent } from '@repo/shadcn/card';
-import { Input } from '@repo/shadcn/input';
-import { Label } from '@repo/shadcn/label';
 import { ModeSwitcher } from '@repo/shadcn/mode-switcher';
 import Link from 'next/link';
 
@@ -31,46 +27,7 @@ const Page = async () => {
             Discover and book amazing rooms around the world
           </p>
 
-          <Card className="mt-8">
-            <CardContent className="p-6">
-              <form action="/rooms/search" method="GET" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location (Optional)</Label>
-                    <LocationAutocomplete />
-                    <p className="text-xs text-muted-foreground">
-                      Leave empty to search all locations
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="checkIn">Check-in (Optional)</Label>
-                    <Input id="checkIn" name="checkIn" type="date" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="checkOut">Check-out (Optional)</Label>
-                    <Input id="checkOut" name="checkOut" type="date" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Guests (Optional)</Label>
-                    <Input
-                      id="capacity"
-                      name="capacity"
-                      type="number"
-                      min="1"
-                      placeholder="Any capacity"
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" size="lg" className="w-full md:w-auto">
-                  Search Rooms
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <SearchForm variant="home" />
         </div>
       </div>
     </section>

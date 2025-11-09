@@ -110,11 +110,54 @@ export class RoomsService {
     // If date range is provided, filter out unavailable rooms
     let availableRooms = rooms;
     if (checkIn && checkOut) {
+      // Both dates provided - check availability for the date range
       const availabilityChecks = await Promise.all(
         rooms.map(async (room) => {
           const isAvailable = await this.availabilityService.checkAvailability(
             room.id,
             checkIn,
+            checkOut,
+          );
+          return { room, isAvailable };
+        }),
+      );
+
+      availableRooms = availabilityChecks
+        .filter((check) => check.isAvailable)
+        .map((check) => check.room);
+    } else if (checkIn) {
+      // Only checkIn provided - check if available starting from that date
+      // We'll check availability for a 1-night stay starting from checkIn
+      const nextDay = new Date(checkIn);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const tempCheckOut = nextDay.toISOString().split('T')[0];
+
+      const availabilityChecks = await Promise.all(
+        rooms.map(async (room) => {
+          const isAvailable = await this.availabilityService.checkAvailability(
+            room.id,
+            checkIn,
+            tempCheckOut,
+          );
+          return { room, isAvailable };
+        }),
+      );
+
+      availableRooms = availabilityChecks
+        .filter((check) => check.isAvailable)
+        .map((check) => check.room);
+    } else if (checkOut) {
+      // Only checkOut provided - check if available until that date
+      // We'll check availability for a 1-night stay ending on checkOut
+      const prevDay = new Date(checkOut);
+      prevDay.setDate(prevDay.getDate() - 1);
+      const tempCheckIn = prevDay.toISOString().split('T')[0];
+
+      const availabilityChecks = await Promise.all(
+        rooms.map(async (room) => {
+          const isAvailable = await this.availabilityService.checkAvailability(
+            room.id,
+            tempCheckIn,
             checkOut,
           );
           return { room, isAvailable };
