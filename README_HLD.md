@@ -43,8 +43,6 @@ The system is designed for:
 
 ### Architecture Diagram
 
-![Architecture](./room_booking_architecture.png)
-
 ```mermaid
 flowchart TB
 
@@ -272,8 +270,6 @@ PENDING → CONFIRMED   or   PENDING → CANCELLED
 
 ### Search Flow
 
-![Search Flow](./search-flow.png)
-
 ```mermaid
 sequenceDiagram
   autonumber
@@ -322,8 +318,6 @@ sequenceDiagram
 ```
 
 ### Booking Flow
-
-![Booking Flow](./booking-flow.png)
 
 ```mermaid
 sequenceDiagram

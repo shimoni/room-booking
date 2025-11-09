@@ -36,15 +36,14 @@ This platform demonstrates a production-ready microservices architecture with:
 
 ## 📑 Table of Contents
 
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [API Endpoints](#api-endpoints)
-- [Project Structure](#project-structure)
-- [Available Scripts](#available-scripts)
-- [Testing](#testing)
-- [Design Documents](#design-documents)
-- [Contributing](#contributing)
-- [License](#license)
+- [Quick Start](#-quick-start)
+- [Architecture](#%EF%B8%8F-architecture)
+- [API Endpoints](#-api-endpoints)
+- [Project Structure](#-project-structure)
+- [Available Scripts](#%EF%B8%8F-available-scripts)
+- [Testing](#-testing)
+- [Design Documents](#-design-documents)
+- [Implementation Notes](#-implementation-notes)
 
 ## 🚀 Quick Start
 
