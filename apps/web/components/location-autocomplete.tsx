@@ -3,7 +3,7 @@
 import { apiFetchClient } from '@/lib/apiFetchClient';
 import { Input } from '@repo/shadcn/input';
 import { cn } from '@repo/shadcn/lib/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface LocationAutocompleteProps {
   defaultValue?: string;
@@ -16,7 +16,6 @@ export default function LocationAutocomplete({
 }: LocationAutocompleteProps) {
   const [query, setQuery] = useState(defaultValue);
   const [locations, setLocations] = useState<string[]>([]);
-  const [filteredLocations, setFilteredLocations] = useState<string[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -39,17 +38,15 @@ export default function LocationAutocomplete({
     fetchLocations();
   }, []);
 
-  // Filter locations based on query
-  useEffect(() => {
+  // Memoize filtered locations to avoid recalculating on every render
+  const filteredLocations = useMemo(() => {
     if (query.trim() === '') {
-      setFilteredLocations(locations);
-    } else {
-      const filtered = locations.filter((location) =>
-        location.toLowerCase().includes(query.toLowerCase()),
-      );
-      setFilteredLocations(filtered);
+      return locations;
     }
-    setSelectedIndex(-1);
+    const lowerQuery = query.toLowerCase();
+    return locations.filter((location) =>
+      location.toLowerCase().includes(lowerQuery),
+    );
   }, [query, locations]);
 
   // Close dropdown when clicking outside
@@ -67,37 +64,62 @@ export default function LocationAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (location: string) => {
-    setQuery(location);
-    setShowDropdown(false);
-    onSelect?.(location);
-  };
+  // Memoize handleSelect to prevent recreating on every render
+  const handleSelect = useCallback(
+    (location: string) => {
+      setQuery(location);
+      setShowDropdown(false);
+      setSelectedIndex(-1);
+      onSelect?.(location);
+    },
+    [onSelect],
+  );
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showDropdown || filteredLocations.length === 0) return;
+  // Memoize handleKeyDown to prevent recreating on every render
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!showDropdown || filteredLocations.length === 0) return;
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev < filteredLocations.length - 1 ? prev + 1 : prev,
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (selectedIndex >= 0 && filteredLocations[selectedIndex]) {
-          handleSelect(filteredLocations[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        setShowDropdown(false);
-        break;
-    }
-  };
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev < filteredLocations.length - 1 ? prev + 1 : prev,
+          );
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (selectedIndex >= 0 && filteredLocations[selectedIndex]) {
+            handleSelect(filteredLocations[selectedIndex]);
+          }
+          break;
+        case 'Escape':
+          setShowDropdown(false);
+          setSelectedIndex(-1);
+          break;
+      }
+    },
+    [showDropdown, filteredLocations, selectedIndex, handleSelect],
+  );
+
+  // Memoize input change handler
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setQuery(e.target.value);
+      setShowDropdown(true);
+      setSelectedIndex(-1);
+    },
+    [],
+  );
+
+  // Memoize focus handler
+  const handleFocus = useCallback(() => {
+    setShowDropdown(true);
+  }, []);
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -107,11 +129,8 @@ export default function LocationAutocomplete({
         type="text"
         placeholder="e.g., New York, USA"
         value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setShowDropdown(true);
-        }}
-        onFocus={() => setShowDropdown(true)}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
         onKeyDown={handleKeyDown}
         autoComplete="off"
       />

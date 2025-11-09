@@ -15,24 +15,36 @@ import { cn } from '@repo/shadcn/lib/utils';
 import SubmitButton from '@repo/shadcn/submit-button';
 import { useAction } from 'next-safe-action/hooks';
 import Link from 'next/link';
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, useCallback, useState } from 'react';
 
 const SignInForm = () => {
   const [formData, setFormData] = useState({
     identifier: '',
     password: '',
   });
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+
+  // Memoize handleChange to prevent recreating on every render
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setFormData((prevState) => ({
       ...prevState,
       [event.target.name]: event.target.value,
     }));
-  };
+  }, []);
+
   const {
     execute,
     isExecuting,
     result: { validationErrors, serverError },
   } = useAction(signInWithCredentials);
+
+  // Memoize handleSubmit to prevent recreating on every render
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      execute(formData);
+    },
+    [execute, formData],
+  );
   return (
     <div className={cn('w-full flex flex-col gap-6')}>
       <Card className="max-w-xl w-full mx-auto">
@@ -64,12 +76,7 @@ const SignInForm = () => {
             {/*    Or continue with*/}
             {/*  </span>*/}
             {/*</div>*/}
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                execute(formData);
-              }}
-            >
+            <form onSubmit={handleSubmit}>
               <div className="grid gap-6">
                 <div className="grid gap-6">
                   <div className="grid gap-2">
