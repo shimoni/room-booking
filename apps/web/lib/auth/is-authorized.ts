@@ -6,9 +6,10 @@ import { NextRequest } from 'next/server';
  *
  * - Allows unrestricted access to static assets like `/assets` and `/favicon.ico`.
  * - Allows unrestricted access to auth pages (sign-in, sign-up)
+ * - Allows unrestricted access to ALL room pages (/rooms/*)
  * - Redirects authenticated users away from auth pages to the homepage
- * - Redirects unauthenticated users trying to access any other route to `/auth/sign-in`
- * - All routes except auth pages require authentication
+ * - Redirects unauthenticated users trying to access protected routes (bookings, profile) to sign-in
+ * - Only booking/profile operations require authentication
  *
  * @param request - The incoming request object containing the target route.
  * @param auth - The current session object or null if unauthenticated.
@@ -30,22 +31,27 @@ export const isAuthorized = ({
     return true;
   }
 
-  // Only auth pages are public (sign-in and sign-up)
-  const publicRoutes = ['/auth/sign-in', '/auth/sign-up'];
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/auth/sign-in',
+    '/auth/sign-up',
+    '/', // Home page (room search)
+  ];
 
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicRoute =
+    publicRoutes.includes(pathname) || pathname.startsWith('/rooms/'); // All room pages are public (search, details, etc.)
 
   // Redirect authenticated users away from auth pages to homepage
   if (isAuth && pathname.startsWith('/auth/sign')) {
     return Response.redirect(new URL('/', nextUrl));
   }
 
-  // Allow unauthenticated access to public routes only
+  // Allow unauthenticated access to public routes
   if (!isAuth && isPublicRoute) {
     return true;
   }
 
-  // Redirect unauthenticated users to sign-in for all other routes
+  // Redirect unauthenticated users to sign-in for protected routes (bookings, profile, etc.)
   if (!isAuth) {
     const signInUrl = new URL('/auth/sign-in', nextUrl);
     signInUrl.searchParams.set('callbackUrl', pathname);

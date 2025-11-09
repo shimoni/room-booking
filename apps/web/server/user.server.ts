@@ -4,35 +4,18 @@ import {
   GetUserSchema,
   User,
 } from '@/types/user.type';
-import { cookies } from 'next/headers';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-/**
- * Helper function to get cookie header string from Next.js cookies
- */
-const getCookieHeader = async (): Promise<string> => {
-  const cookieStore = await cookies();
-  return cookieStore
-    .getAll()
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join('; ');
-};
+import { apiFetchReadOnly } from './api.server';
 
 /**
  * Get all users
- * Uses direct fetch with Next.js caching (ISR with 5 minute revalidation)
- * Requires authentication - forwards cookies to backend
+ * No Next.js caching - relies on backend Redis cache
+ * Requires authentication - forwards cookies to backend (read-only, no token refresh)
  * @returns GetAllUsers
  */
 export const getAllUsers = async (): Promise<GetAllUsers> => {
   try {
-    const cookieHeader = await getCookieHeader();
-    const response = await fetch(`${API_URL}/users`, {
-      headers: {
-        Cookie: cookieHeader,
-      },
-      next: { revalidate: 300 }, // Cache for 5 minutes
+    const response = await apiFetchReadOnly('/users', {
+      cache: 'no-store', // No Next.js cache - backend has Redis cache
     });
 
     if (!response.ok) {
@@ -55,20 +38,16 @@ export const getAllUsers = async (): Promise<GetAllUsers> => {
 };
 
 /**
- * Get user by identifier (Email or Username)
- * Uses direct fetch with Next.js caching (ISR with 5 minute revalidation)
- * Requires authentication - forwards cookies to backend
- * @param identifier
- * @returns User | null
+ * Get user by identifier
+ * No Next.js caching - relies on backend Redis cache
+ * Requires authentication - forwards cookies to backend (read-only, no token refresh)
+ * @param identifier - User ID or username
+ * @returns User
  */
 export const getUser = async (identifier: string): Promise<User | null> => {
   try {
-    const cookieHeader = await getCookieHeader();
-    const response = await fetch(`${API_URL}/users/${identifier}`, {
-      headers: {
-        Cookie: cookieHeader,
-      },
-      next: { revalidate: 300 }, // Cache for 5 minutes
+    const response = await apiFetchReadOnly(`/users/${identifier}`, {
+      cache: 'no-store', // No Next.js cache - backend has Redis cache
     });
 
     if (!response.ok) {

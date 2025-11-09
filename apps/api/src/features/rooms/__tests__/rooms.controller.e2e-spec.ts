@@ -85,11 +85,11 @@ describe('RoomsController (e2e)', () => {
   });
 
   describe('GET /rooms/search', () => {
-    it('should return rooms with default pagination', async () => {
+    it('should return rooms with default pagination without authentication', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/search',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -105,7 +105,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/search?location=New York',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -123,7 +123,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/search?minPrice=${minPrice}&maxPrice=${maxPrice}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -139,7 +139,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/search?capacity=${minCapacity}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -155,7 +155,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/search?checkIn=${checkIn}&checkOut=${checkOut}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -168,7 +168,7 @@ describe('RoomsController (e2e)', () => {
       const firstPageRes = await app.inject({
         method: 'GET',
         url: '/rooms/search?limit=2',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(firstPageRes.statusCode).toBe(200);
@@ -179,7 +179,7 @@ describe('RoomsController (e2e)', () => {
         const secondPageRes = await app.inject({
           method: 'GET',
           url: `/rooms/search?limit=2&cursor=${firstPage.nextCursor}`,
-          cookies: { access_token: accessToken },
+          // No authentication required - public endpoint
         });
 
         expect(secondPageRes.statusCode).toBe(200);
@@ -192,7 +192,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/search?location=New York&minPrice=150&capacity=2',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -207,12 +207,12 @@ describe('RoomsController (e2e)', () => {
   });
 
   describe('GET /rooms/:id', () => {
-    it('should return room details by ID', async () => {
+    it('should return room details by ID without authentication', async () => {
       const roomId = testRoomIds[0];
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -229,7 +229,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/99999',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(404);
@@ -241,7 +241,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/invalid',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(400);
@@ -249,11 +249,11 @@ describe('RoomsController (e2e)', () => {
   });
 
   describe('GET /rooms/autocomplete/locations', () => {
-    it('should return unique location strings', async () => {
+    it('should return unique location strings without authentication', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/autocomplete/locations',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -276,7 +276,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/autocomplete/locations',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -295,7 +295,7 @@ describe('RoomsController (e2e)', () => {
       const firstRes = await app.inject({
         method: 'GET',
         url: '/rooms/autocomplete/locations',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
       expect(firstRes.statusCode).toBe(200);
       const firstBody = firstRes.json();
@@ -304,7 +304,7 @@ describe('RoomsController (e2e)', () => {
       const secondRes = await app.inject({
         method: 'GET',
         url: '/rooms/autocomplete/locations',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
       expect(secondRes.statusCode).toBe(200);
       const secondBody = secondRes.json();
@@ -315,14 +315,14 @@ describe('RoomsController (e2e)', () => {
   });
 
   describe('GET /rooms/:id/availability', () => {
-    it('should check availability for valid dates', async () => {
+    it('should check availability for valid dates without authentication', async () => {
       const roomId = testRoomIds[0];
       const checkIn = '2025-02-01';
       const checkOut = '2025-02-05';
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(200);
@@ -339,7 +339,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}/availability?checkIn=2025-02-10&checkOut=2025-02-05`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(400);
@@ -352,7 +352,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}/availability?checkIn=2020-01-01&checkOut=2020-01-05`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(400);
@@ -362,7 +362,7 @@ describe('RoomsController (e2e)', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/rooms/99999/availability?checkIn=2025-02-01&checkOut=2025-02-05',
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
 
       expect(res.statusCode).toBe(404);
@@ -377,7 +377,7 @@ describe('RoomsController (e2e)', () => {
       const firstRes = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
       expect(firstRes.statusCode).toBe(200);
 
@@ -385,7 +385,7 @@ describe('RoomsController (e2e)', () => {
       const secondRes = await app.inject({
         method: 'GET',
         url: `/rooms/${roomId}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
       expect(secondRes.statusCode).toBe(200);
 
@@ -399,14 +399,14 @@ describe('RoomsController (e2e)', () => {
       const firstRes = await app.inject({
         method: 'GET',
         url: `/rooms/search?${query}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
       expect(firstRes.statusCode).toBe(200);
 
       const secondRes = await app.inject({
         method: 'GET',
         url: `/rooms/search?${query}`,
-        cookies: { access_token: accessToken },
+        // No authentication required - public endpoint
       });
       expect(secondRes.statusCode).toBe(200);
 

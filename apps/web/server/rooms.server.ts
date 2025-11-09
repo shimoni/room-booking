@@ -1,3 +1,4 @@
+import { env } from '@/lib/env';
 import {
   CheckAvailabilityResponseSchema,
   GetRoomResponseSchema,
@@ -6,38 +7,23 @@ import {
   SearchRoomsResponseSchema,
 } from '@/types/room.type';
 import { buildSearchParams } from '@repo/utils';
-import { cookies } from 'next/headers';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-/**
- * Helper function to get cookies and create Cookie header
- */
-const getCookieHeader = async (): Promise<string> => {
-  const cookieStore = await cookies();
-  return cookieStore
-    .getAll()
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join('; ');
-};
 
 /**
  * Search rooms with filters
- * Uses direct fetch with Next.js caching (ISR with 5 minute revalidation)
- * Requires authentication - forwards cookies to backend
+ * Public endpoint - no authentication required
+ * No Next.js caching - relies on backend Redis cache
  * @param params - Search parameters (location, dates, capacity, price)
  * @returns Search results with rooms and pagination
  */
 export const searchRooms = async (params: SearchRoomsParams) => {
   try {
-    const cookieHeader = await getCookieHeader();
     const searchParams = buildSearchParams(params);
-    const response = await fetch(`${API_URL}/rooms/search?${searchParams}`, {
-      headers: {
-        Cookie: cookieHeader,
+    const response = await fetch(
+      `${env.API_URL}/rooms/search?${searchParams}`,
+      {
+        cache: 'no-store', // No Next.js cache - backend has Redis cache
       },
-      next: { revalidate: 300 }, // Cache for 5 minutes
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -67,19 +53,15 @@ export const searchRooms = async (params: SearchRoomsParams) => {
 
 /**
  * Get room details by ID
- * Uses direct fetch with Next.js caching (ISR with 30 minute revalidation)
- * Requires authentication - forwards cookies to backend
+ * Public endpoint - no authentication required
+ * No Next.js caching - relies on backend Redis cache
  * @param roomId - Room ID
  * @returns Room details
  */
 export const getRoom = async (roomId: number): Promise<Room | null> => {
   try {
-    const cookieHeader = await getCookieHeader();
-    const response = await fetch(`${API_URL}/rooms/${roomId}`, {
-      headers: {
-        Cookie: cookieHeader,
-      },
-      next: { revalidate: 1800 }, // Cache for 30 minutes
+    const response = await fetch(`${env.API_URL}/rooms/${roomId}`, {
+      cache: 'no-store', // No Next.js cache - backend has Redis cache
     });
 
     if (!response.ok) {
@@ -106,8 +88,8 @@ export const getRoom = async (roomId: number): Promise<Room | null> => {
 
 /**
  * Check room availability for given dates
- * Uses direct fetch with Next.js caching (ISR with 5 minute revalidation)
- * Requires authentication - forwards cookies to backend
+ * Public endpoint - no authentication required
+ * No Next.js caching - relies on backend Redis cache
  * @param roomId - Room ID
  * @param checkIn - Check-in date (ISO string)
  * @param checkOut - Check-out date (ISO string)
@@ -119,14 +101,10 @@ export const checkRoomAvailability = async (
   checkOut: string,
 ) => {
   try {
-    const cookieHeader = await getCookieHeader();
     const response = await fetch(
-      `${API_URL}/rooms/${roomId}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
+      `${env.API_URL}/rooms/${roomId}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
       {
-        headers: {
-          Cookie: cookieHeader,
-        },
-        next: { revalidate: 300 }, // Cache for 5 minutes
+        cache: 'no-store', // No Next.js cache - backend has Redis cache
       },
     );
 

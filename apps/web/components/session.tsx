@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react';
 
 const Session = () => {
   useSession({
-    required: true,
+    required: false, // Allow unauthenticated access - don't force login
   });
   return <></>;
 };

@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetchClient } from '@/lib/apiFetchClient';
 import { Input } from '@repo/shadcn/input';
 import { cn } from '@repo/shadcn/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -24,12 +25,8 @@ export default function LocationAutocomplete({
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/rooms/autocomplete/locations`,
-          {
-            credentials: 'include', // Include httpOnly cookies
-          },
-        );
+        const response = await apiFetchClient('/rooms/autocomplete/locations');
+
         if (response.ok) {
           const data = await response.json();
           setLocations(data);

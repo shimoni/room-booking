@@ -8,13 +8,11 @@ import {
   GetBookingResponseSchema,
 } from '@/types/booking.type';
 import { randomUUID } from 'crypto';
-import { cookies } from 'next/headers';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { apiFetch, apiFetchReadOnly } from './api.server';
 
 /**
  * Create a new booking (protected action)
- * Requires authentication - forwards cookies to backend
+ * Requires authentication - forwards cookies to backend with auto token refresh
  * @schema CreateBookingSchema
  */
 export const createBooking = safeAction
@@ -22,21 +20,13 @@ export const createBooking = safeAction
   .action(async ({ parsedInput }) => {
     const idempotencyKey = parsedInput.idempotencyKey || randomUUID();
 
-    // Get cookies to forward for authentication
-    const cookieStore = await cookies();
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((cookie) => `${cookie.name}=${cookie.value}`)
-      .join('; ');
-
-    const response = await fetch(`${API_URL}/bookings`, {
+    const response = await apiFetch('/bookings', {
       method: 'POST',
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         'X-Idempotency-Key': idempotencyKey,
-        Cookie: cookieHeader, // Forward authentication cookies
       },
       body: JSON.stringify({
         roomId: parsedInput.roomId,
@@ -64,9 +54,9 @@ export const createBooking = safeAction
   });
 
 /**
- * Get booking details by ID (protected endpoint)
- * Requires authentication - forwards cookies to backend
+ * Get booking by ID
  * Uses direct fetch with Next.js caching (ISR with 5 minute revalidation)
+ * Requires authentication - forwards cookies to backend (read-only, no token refresh)
  * @param bookingId - Booking ID
  * @returns Booking details or null
  */
@@ -74,18 +64,8 @@ export const getBooking = async (
   bookingId: number,
 ): Promise<Booking | null> => {
   try {
-    // Get cookies to forward for authentication
-    const cookieStore = await cookies();
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((cookie) => `${cookie.name}=${cookie.value}`)
-      .join('; ');
-
-    const response = await fetch(`${API_URL}/bookings/${bookingId}`, {
-      headers: {
-        Cookie: cookieHeader, // Forward authentication cookies
-      },
-      next: { revalidate: 300 }, // Cache for 5 minutes
+    const response = await apiFetchReadOnly(`/bookings/${bookingId}`, {
+      cache: 'no-store', // No Next.js cache - backend has Redis cache
     });
 
     if (!response.ok) {

@@ -1,3 +1,4 @@
+import { Public } from '@/common/decorators';
 import {
   Controller,
   Get,
@@ -6,23 +7,18 @@ import {
   Query,
   ValidationPipe,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SearchRoomsDto } from './dto/search-rooms.dto';
 import { RoomsService } from './rooms.service';
 
 @ApiTags('rooms')
 @Controller('rooms')
-@ApiBearerAuth() // All room endpoints now require authentication
 export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   // Autocomplete endpoint for location suggestions
   @Get('autocomplete/locations')
+  @Public() // Public endpoint - no authentication required
   @ApiOperation({ summary: 'Get unique locations for autocomplete' })
   @ApiResponse({
     status: 200,
@@ -38,6 +34,7 @@ export class RoomsController {
   }
 
   @Get('search')
+  @Public() // Public endpoint - no authentication required for browsing
   @ApiOperation({
     summary: 'Search rooms with filters and cursor pagination',
   })
@@ -49,6 +46,7 @@ export class RoomsController {
   }
 
   @Get(':id/availability')
+  @Public() // Public endpoint - guests can check availability
   @ApiOperation({ summary: 'Check room availability for given dates' })
   @ApiResponse({
     status: 200,
@@ -83,6 +81,7 @@ export class RoomsController {
   }
 
   @Get(':id')
+  @Public() // Public endpoint - anyone can view room details
   @ApiOperation({ summary: 'Get room details by ID' })
   @ApiResponse({ status: 200, description: 'Returns room details' })
   @ApiResponse({ status: 404, description: 'Room not found' })
