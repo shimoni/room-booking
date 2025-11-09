@@ -58,7 +58,7 @@ This platform demonstrates a production-ready microservices architecture with:
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/theaungphyo/turborepo.git
+git clone https://github.com/shimoni/room-booking.git
 cd turborepo
 ```
 
