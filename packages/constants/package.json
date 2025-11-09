@@ -1,7 +1,6 @@
 {
   "name": "@repo/constants",
   "version": "1.0.0",
-  "type": "module",
   "exports": {
     "./*": "./*.ts",
     ".": "./index.ts"

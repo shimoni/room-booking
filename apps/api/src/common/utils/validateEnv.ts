@@ -4,26 +4,46 @@ import { z } from 'zod';
  * Zod schema for validating and typing environment variables.
  */
 export const EnvSchema = z.object({
-  HOST: z.string(),
+  HOST: z.string().default('localhost'),
   NODE_ENV: z
     .enum(['development', 'production', 'test', 'provision'])
     .default('development'),
-  PORT: z.coerce.number(),
+  PORT: z.coerce.number().default(3001),
   ALLOW_CORS_URL: z.string().url(),
-  ACCESS_TOKEN_SECRET: z.string().min(10).max(128),
-  ACCESS_TOKEN_EXPIRATION: z.string().min(1).max(60),
-  REFRESH_TOKEN_SECRET: z.string().min(10).max(128),
-  REFRESH_TOKEN_EXPIRATION: z.string().min(1).max(365),
-  DB_HOST: z.string(),
-  DB_PORT: z.string(),
+
+  // JWT Configuration
+  JWT_SECRET: z.string().min(10).max(128),
+  JWT_REFRESH_SECRET: z.string().min(10).max(128),
+  ACCESS_TOKEN_EXPIRATION: z.string().default('15m'),
+  REFRESH_TOKEN_EXPIRATION: z.string().default('7d'),
+
+  // Legacy token support (for backward compatibility)
+  ACCESS_TOKEN_SECRET: z.string().min(10).max(128).optional(),
+  REFRESH_TOKEN_SECRET: z.string().min(10).max(128).optional(),
+
+  // Database Configuration (MySQL)
+  DB_HOST: z.string().default('localhost'),
+  DB_PORT: z.coerce.number().default(3306),
   DB_USERNAME: z.string(),
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
-  DB_SSL: z.string().transform((value) => value === 'true'),
-  MAIL_HOST: z.string(),
-  MAIL_USERNAME: z.string(),
-  MAIL_PASSWORD: z.string(),
-  FILE_SYSTEM: z.enum(['s3', 'public']),
+  DB_SSL: z
+    .string()
+    .transform((value) => value === 'true')
+    .optional(),
+
+  // Redis Configuration
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.coerce.number().default(6379),
+  REDIS_TTL: z.coerce.number().default(300),
+
+  // Mail Configuration
+  MAIL_HOST: z.string().optional(),
+  MAIL_USERNAME: z.string().optional(),
+  MAIL_PASSWORD: z.string().optional(),
+
+  // File System Configuration
+  FILE_SYSTEM: z.enum(['s3', 'public']).default('public'),
   FILE_MAX_SIZE: z.coerce.number().default(20971520),
   AWS_REGION: z.string().default(''),
   AWS_ACCESS_KEY_ID: z.string().default(''),

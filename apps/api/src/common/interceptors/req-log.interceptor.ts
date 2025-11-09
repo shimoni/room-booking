@@ -1,4 +1,3 @@
-import { concatStr } from '@/common/utils';
 import {
   CallHandler,
   ExecutionContext,
@@ -9,47 +8,30 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
-/**
- * Interceptor for logging HTTP request and response details.
- *
- * Logs request method and URL before handling the request.
- * Optionally logs response status after the request is handled.
- */
 @Injectable()
 export class ReqLogInterceptor implements NestInterceptor {
-  /**
-   * Logger instance for request logging.
-   * @type {Logger}
-   */
-  private readonly logger: Logger;
+  private readonly logger = new Logger(ReqLogInterceptor.name);
 
-  /**
-   * Creates an instance of ReqLogInterceptor.
-   */
-  constructor() {
-    this.logger = new Logger('REQUEST INTERCEPTOR', { timestamp: true });
-  }
-
-  /**
-   * Intercepts incoming HTTP requests and logs details before and after handling.
-   *
-   * @param {ExecutionContext} context - The execution context containing request/response information.
-   * @param {CallHandler} next - The handler for processing the request.
-   * @returns {Observable<any>} Observable of the response stream.
-   */
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const req = context.switchToHttp().getRequest();
-    const res = context.switchToHttp().getResponse();
-
-    // Log request method and URL before handling
-    this.logger.log(concatStr([req.method, req.originalUrl]));
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const request = context.switchToHttp().getRequest();
+    const { method, url } = request;
+    const startTime = Date.now();
 
     return next.handle().pipe(
-      tap(() => {
-        // Optionally log response details after handling
-        // this.logger.log(
-        //   concatStr([req.method, req.originalUrl, res.statusCode]),
-        // );
+      tap({
+        next: () => {
+          const response = context.switchToHttp().getResponse();
+          const duration = Date.now() - startTime;
+          this.logger.log(
+            `${method} ${url} - ${response.statusCode} - ${duration}ms`,
+          );
+        },
+        error: (error) => {
+          const duration = Date.now() - startTime;
+          this.logger.error(
+            `${method} ${url} - ${error.status || 500} - ${duration}ms - ${error.message}`,
+          );
+        },
       }),
     );
   }

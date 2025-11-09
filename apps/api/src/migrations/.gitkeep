@@ -1,0 +1,3 @@
+// Migrations will be auto-generated using: npm run db:generate
+// After defining entities, run: npm run db:generate
+// This will create migration files automatically based on entity changes

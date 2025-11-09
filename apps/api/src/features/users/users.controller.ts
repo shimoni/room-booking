@@ -1,18 +1,12 @@
 import { Public } from '@/common/decorators';
-import { FileService } from '@/features/file/file.service';
-import {
-  FileInterceptor,
-  MemoryStorageFile,
-  UploadedFile,
-} from '@blazity/nest-file-fastify';
-import { Controller, Get, Param, Post, UseInterceptors } from '@nestjs/common';
+import { UserResponse } from '@/common/interfaces/auth.interface';
+import { Controller, Get, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 /**
  * Controller for managing user-related operations.
  *
- * Provides endpoints to fetch all users, fetch a single user by identifier,
- * and test file upload functionality.
+ * Provides endpoints to fetch all users and fetch a single user by identifier.
  */
 @Controller('users')
 export class UsersController {
@@ -20,23 +14,20 @@ export class UsersController {
    * Creates an instance of UsersController.
    *
    * @param {UsersService} usersService - Service for user-related operations.
-   * @param {FileService} fileService - Service for file-related operations.
    */
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly fileService: FileService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   /**
    * Fetches all users.
    *
-   * @returns {Promise<{ message: string; data: any[] }>} An object containing a message and an array of user data without passwords.
+   * @returns {Promise<{ message: string; data: UserResponse[] }>} An object containing a message and an array of user data without passwords.
    */
   @Public()
   @Get()
-  async findAll(): Promise<{ message: string; data: any[] }> {
+  async findAll(): Promise<{ message: string; data: UserResponse[] }> {
     const users = await this.usersService.findAll();
-    const data = users.map(({ password, ...user }) => ({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const data = users.map(({ password_hash, ...user }) => ({
       ...user,
     }));
     return { message: 'Users fetched successfully', data };
@@ -46,31 +37,16 @@ export class UsersController {
    * Fetches a single user by identifier.
    *
    * @param {string} identifier - The identifier of the user (e.g., ID or username).
-   * @returns {Promise<{ message: string; data: any }>} An object containing a message and the user data without password.
+   * @returns {Promise<{ message: string; data: UserResponse }>} An object containing a message and the user data without password.
    */
   @Public()
   @Get(':identifier')
   async findOne(
     @Param('identifier') identifier: string,
-  ): Promise<{ message: string; data: any }> {
+  ): Promise<{ message: string; data: UserResponse }> {
     const user = await this.usersService.findOne(identifier);
-    const { password, ...data } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash, ...data } = user;
     return { message: 'User fetched successfully', data };
-  }
-
-  /**
-   * Endpoint for testing file upload.
-   *
-   * @param {MemoryStorageFile} file - The uploaded file.
-   */
-  @Public()
-  @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  async fileTesting(
-    @UploadedFile()
-    file: MemoryStorageFile,
-  ) {
-    const upFile = await this.fileService.uploadFile(file);
-    return upFile;
   }
 }

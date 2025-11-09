@@ -9,12 +9,15 @@ export const env = createEnv({
     NODE_ENV: z.string(),
     AUTH_URL: z.string().url(),
   },
-  client: {},
+  client: {
+    NEXT_PUBLIC_API_URL: z.string().url(),
+  },
   runtimeEnv: {
     API_URL: process.env.API_URL,
     AUTH_SESSION_AGE: process.env.AUTH_SESSION_AGE,
     AUTH_SECRET: process.env.AUTH_SECRET,
     NODE_ENV: process.env.NODE_ENV,
     AUTH_URL: process.env.AUTH_URL,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
 });

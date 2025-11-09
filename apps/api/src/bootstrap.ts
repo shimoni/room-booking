@@ -1,5 +1,6 @@
 import { Env } from '@/common/utils';
 import { swagger } from '@/swagger';
+import fastifyCookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
@@ -42,6 +43,11 @@ export const bootstrap = async (app: NestFastifyApplication): Promise<void> => {
     credentials: true,
     origin: configService.get('ALLOW_CORS_URL').split(','),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  });
+
+  // Register cookie parser for HttpOnly cookies
+  await app.register(fastifyCookie, {
+    secret: configService.get('JWT_SECRET') as string, // for signed cookies (optional)
   });
 
   // Use custom logger for application logs

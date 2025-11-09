@@ -1,142 +1,301 @@
-<img src="assets/preview.png" width="851" alt="hello">
+# 🏨 Room Booking Platform
 
-## NestJS & NextJS Boilerplate with Turborepo
+A scalable and fault-tolerant room booking platform built with modern technologies. This project implements user registration, room search with advanced filtering, and booking functionality with automatic payment processing.
 
-This repository provides a scalable and efficient `monorepo` setup using Turborepo. It includes `NestJS` for backend
-services and `NextJS` for frontend applications, with a suite of tools and libraries configured for seamless development
-and deployment.
+## 📋 Overview
 
-### **Features**
+This platform demonstrates a production-ready microservices architecture with:
 
-- `NestJS (v11)` backend
-- `NextJS (v15)` frontend
-- `SWC` for fast TypeScript and JavaScript transpilation
+- **2 Microservices**: Separate UI and Backend services
+- **Database Locking**: Prevents double-booking with row-level MySQL locks
+- **Redis Caching**: Optimizes search and availability checks
+- **Idempotency**: Prevents duplicate bookings
+- **Comprehensive Testing**: 25+ E2E tests for core features
+
+## ✨ Features
+
+### Core Features (As Per Requirements)
+
+- ✅ **User Registration** - Email/password authentication with JWT tokens
+- ✅ **Room Search** - Advanced filtering by location, price, capacity, and dates
+- ✅ **Booking Creation** - Automatic payment processing with availability management
+
+### Technical Features
+
+- `NestJS (v11)` backend with TypeScript
+- `NextJS (v15)` frontend with React 19 and App Router
+- `MySQL 8.0` database with TypeORM
+- `Redis 7` for high-performance caching
+- `JWT` Access Token & Refresh Token Authentication
+- `Docker Compose` for infrastructure
+- `SWC` for fast TypeScript transpilation
 - `pnpm` for efficient dependency management
-- `JWT` Access Token & Refresh Token Authentication for secure API access
-- `PostgreSQL` database with TypeORM
-- `Nodemailer` for email services
-- `Linting` and `Formatting` pre-configured for code quality
-- `Micro-Frontend` Support with Turborepo
-- `Shadcn/UI` integration for styled components
-- `Tailwindcss(v4)` integration in `@repo/shadcn`
+- Database transaction locking for concurrency control
+- Idempotency keys for duplicate prevention
+- Comprehensive E2E test coverage
 
-### **Table of Contents**
+## 📑 Table of Contents
 
-- Installation
-- Getting Started
-- Project Structure
-- Scripts
-- Contributing
-- License
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [API Endpoints](#api-endpoints)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
+- [Testing](#testing)
+- [Design Documents](#design-documents)
+- [Contributing](#contributing)
+- [License](#license)
 
-### **Installation**
+## 🚀 Quick Start
 
-Clone the repository:
+### Prerequisites
 
-```shell
-git clone https://github.com/devaungphyo/turbo-npn.git
+- Node.js 18+ and pnpm
+- Docker and Docker Compose
+
+### Installation
+
+1. **Clone the repository:**
+
+```bash
+git clone https://github.com/theaungphyo/turborepo.git
+cd turborepo
 ```
 
-Navigate to the project directory:
+2. **Install dependencies:**
 
-```shell
-cd turbo-npn
-```
-
-Install dependencies using pnpm:
-
-```shell
+```bash
 pnpm install
 ```
 
-Getting Started
-To start the development server, run:
+3. **Start infrastructure (MySQL + Redis):**
 
-```shell
+```bash
+docker-compose up -d
+```
+
+4. **Setup database:**
+
+```bash
+cd apps/api
+pnpm db:migrate
+pnpm seed
+```
+
+5. **Start development servers:**
+
+```bash
+# From root directory
 pnpm dev
 ```
 
-This will start both the NestJS backend and the Next.js frontend in development mode.
+The services will be available at:
 
-Project Structure
-The repository is organized into the following structure:
+- **Frontend (UI)**: http://localhost:3000
+- **Backend (API)**: http://localhost:3001
+- **API Documentation (Swagger)**: http://localhost:3001/api
 
-```yaml
-turborepo
-├── .husky               # Git hooks
-├── apps
-│   ├── api              # NestJS application
-│   └── web              # NextJS application
-├── assets               # Assets folder for media assets
-├── packages
-│   ├── shadcn           # shadcn/UI component library
-│   ├── ts-config        # Shared typescript configuration files
-│   ├── eslint-config    # Shared eslint configuration files
-│   ├── utils            # Shared utils functions
-└── turbo.json           # Turborepo configuration
+## 🏗️ Architecture
+
+### Microservices
+
+```
+┌─────────────────┐         ┌─────────────────┐
+│   Frontend UI   │────────▶│   Backend API   │
+│   (Next.js)     │   HTTP  │   (NestJS)      │
+│   Port: 3000    │         │   Port: 3001    │
+└─────────────────┘         └────────┬────────┘
+                                     │
+                    ┌────────────────┼────────────────┐
+                    ▼                ▼                ▼
+              ┌──────────┐    ┌──────────┐    ┌──────────┐
+              │  MySQL   │    │  Redis   │    │   JWT    │
+              │  Port:   │    │  Port:   │    │  Tokens  │
+              │  3306    │    │  6379    │    └──────────┘
+              └──────────┘    └──────────┘
 ```
 
-### Backend (NestJS)
+### Key Architectural Decisions
 
-The backend is powered by NestJS, with TypeORM configured to use PostgreSQL. JWT access token and refresh token
-authentication is implemented for secure API access. Nodemailer is used to handle email services.
+**1. Concurrency Control**
 
-<img src="assets/lifecycle.png" alt="life cycle" width="100%">
+- Database row-level locking (`SELECT ... FOR UPDATE`)
+- Optimistic locking with version fields
+- Idempotency keys for duplicate prevention
 
-### Frontend (NextJS)
+**2. Caching Strategy (Redis)**
 
-The frontend is built with NextJS v15, styled with shadcn/UI components. It is optimized for server-side rendering and
-frontend authentication.
-Micro-Frontend with Turborepo
-Using Turborepo, the project supports a micro-frontend architecture, enabling shared libraries and configurations across
-apps.
+- Room details: 30-minute TTL
+- Search results: 5-minute TTL
+- Availability: 60-second TTL with cache invalidation
 
-### To Add New UI Components to the UI Package
+**3. Authentication**
 
-```shell
-cd packages/shadcn
+- JWT access tokens (15 min expiry)
+- Refresh tokens (7 days expiry)
+- HttpOnly secure cookies
+
+## 🔌 API Endpoints
+
+### Authentication (Public)
+
+- `POST /auth/sign-up` - Register new user
+- `POST /auth/sign-in` - Login with credentials
+- `POST /auth/refresh` - Refresh access token
+- `POST /auth/sign-out` - Logout and clear tokens
+- `GET /auth/me` - Get current user profile
+
+### Rooms (Public)
+
+- `GET /rooms/search` - Search rooms with filters
+  - Query params: `location`, `checkIn`, `checkOut`, `minPrice`, `maxPrice`, `capacity`, `limit`, `cursor`
+- `GET /rooms/:id` - Get room details
+- `GET /rooms/:id/availability` - Check room availability
+
+### Bookings (Protected - JWT Required)
+
+- `POST /bookings` - Create new booking with automatic payment
+  - Headers: `X-Idempotency-Key` (optional)
+- `GET /bookings/:id` - Get booking details
+
+### Health
+
+- `GET /health` - Health check endpoint
+
+## 📁 Project Structure
+
+```
+turborepo/
+├── apps/
+│   ├── api/                          # NestJS Backend
+│   │   ├── src/
+│   │   │   ├── features/
+│   │   │   │   ├── auth/            # Authentication module
+│   │   │   │   ├── rooms/           # Room search & details
+│   │   │   │   ├── bookings/        # Booking creation & management
+│   │   │   │   ├── availability/    # Availability management
+│   │   │   │   ├── payments/        # Payment processing (simulated)
+│   │   │   │   └── users/           # User management
+│   │   │   ├── common/              # Shared utilities
+│   │   │   │   ├── decorators/      # Custom decorators (@Public)
+│   │   │   │   ├── guards/          # JWT auth guard
+│   │   │   │   ├── interceptors/    # Logging, response transform
+│   │   │   │   └── modules/         # Cache, Logger, Throttle
+│   │   │   ├── database/            # TypeORM config & migrations
+│   │   │   └── test/                # E2E test helpers
+│   │   ├── scripts/                 # Database seeding scripts
+│   │   ├── docker-compose.yml       # MySQL + Redis infrastructure
+│   │   └── package.json
+│   │
+│   └── web/                          # Next.js Frontend
+│       ├── app/                      # App Router pages
+│       ├── components/               # React components
+│       ├── lib/
+│       │   ├── api/                  # API client
+│       │   └── auth/                 # Auth utilities
+│       ├── server/                   # Server-side utilities
+│       ├── types/                    # TypeScript types
+│       └── package.json
+│
+├── packages/
+│   ├── constants/                    # Shared constants
+│   ├── eslint-config/                # Shared ESLint configs
+│   ├── shadcn/                       # UI component library
+│   ├── ts-config/                    # Shared TypeScript configs
+│   └── utils/                        # Shared utility functions
+│
+├── scripts/
+│   └── init-db.sql                   # Database initialization
+│
+├── docker-compose.yml                # Infrastructure setup
+├── turbo.json                        # Turborepo configuration
+├── README.md                         # This file
+├── README_HLD.md                     # High-Level Design document
+├── REDIS_IMPLEMENTATION.md           # Redis caching details
+└── TESTING_IMPLEMENTATION.md         # Testing strategy
 ```
 
-Then run the following command:
+## 🛠️ Available Scripts
 
-```shell
-pnpm dlx shadcn@latest add
+### Root Level
+
+```bash
+pnpm install              # Install all dependencies
+pnpm build                # Build all apps and packages
+pnpm dev                  # Start all apps in development mode
+pnpm dev:api              # Start only API in development mode
+pnpm dev:web              # Start only web app in development mode
+pnpm lint                 # Lint all apps and packages
+pnpm format               # Format code with Prettier
+pnpm format:check         # Check code formatting without modifying
+pnpm test                 # Run all tests using TurboRepo
+pnpm commit               # Interactive commit with Commitizen
+pnpm changeset            # Create version changeset
 ```
 
-This will add the latest version of shadcn to the UI package.
+### API (Backend)
 
-`If you got an error in the UI package, change the import path`
-
-```tsx
-// form
-import { cn } from '@repo/lib/utils';
-
-// to
-import { cn } from '@repo/shadcn/lib/utils';
+```bash
+pnpm run dev -w api               # Start API in development mode
+pnpm run build -w api             # Build API for production
+pnpm run start:prod -w api        # Start API in production mode
+pnpm run migration:generate -w api # Generate new migration
+pnpm run migration:run -w api     # Run pending migrations
+pnpm run seed -w api              # Seed database with test data
+pnpm run test -w api              # Run E2E tests
+pnpm run test:cov -w api          # Run tests with coverage
+pnpm add:api <package>            # Add package to API workspace
 ```
 
-### Scripts
+### Web (Frontend)
 
-- `pnpm add:api` - Adds a package specifically to the api workspace.
-- `pnpm add:web` - Adds a package specifically to the web workspace.
-- `pnpm build` - Builds both the backend and frontend for production using TurboRepo.
-- `pnpm changeset` - Creates a new changeset for versioning updates.
-- `pnpm clear:modules` - Clears all node_modules in the project using npkill.
-- `pnpm commit` - Opens an interactive commit message interface using Commitizen (cz).
-- `pnpm dev` - Starts both the backend and frontend in development mode using TurboRepo.
-- `pnpm dev:api` - Starts the backend (api) in development mode.
-- `pnpm dev:web` - Starts the frontend (web) in development mode.
-- `pnpm format` - Formats the codebase according to the pre-configured Prettier rules.
-- `pnpm format:check` - Checks the codebase formatting against Prettier rules without modifying files.
-- `pnpm lint` - Lints all code in the repository using TurboRepo.
-- `pnpm prepare` - Runs Husky to set up Git hooks.
-- `pnpm prod` - Starts both the backend and frontend in production mode.
-- `pnpm test` - Runs all tests defined in the repository using TurboRepo.
+```bash
+pnpm run dev -w web       # Start Next.js in development mode
+pnpm run build -w web     # Build Next.js for production
+pnpm run start -w web     # Start Next.js in production mode
+pnpm run lint -w web      # Lint frontend code
+pnpm add:web <package>    # Add package to Web workspace
+```
 
-### Contributing
+## 🧪 Testing
 
-Contributions are welcome! Please fork this repository, make your changes, and submit a pull request.
+```bash
+# Run all tests
+pnpm run test -w api
 
-### License
+# Run specific test suite
+pnpm run test -w api -- auth.controller.e2e-spec
+pnpm run test -w api -- rooms.controller.e2e-spec
+pnpm run test -w api -- availability.controller.e2e-spec
+pnpm run test -w api -- bookings.controller.e2e-spec
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+# Run with coverage
+pnpm run test:cov -w api
+```
+
+### Test Environment
+
+Tests automatically:
+
+- Spin up test database and Redis instances
+- Seed test data (users, rooms, availability)
+- Clean up after each test suite
+- Verify Redis caching behavior
+
+## 📚 Design Documents
+
+For detailed architecture and implementation information, see:
+
+- **[High-Level Design](README_HLD.md)** - System architecture, component design, database schema
+
+## 📝 Implementation Notes
+
+### Features Implemented (Per Requirements)
+
+✅ User registration and authentication  
+✅ Room search with filters (location, dates, price, capacity)  
+✅ Room availability checking  
+✅ Booking creation with automatic payment  
+✅ Idempotency for booking requests  
+✅ Concurrency control (database locking)  
+✅ Redis caching for search and availability

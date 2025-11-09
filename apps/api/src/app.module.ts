@@ -1,21 +1,20 @@
-import { JwtAuthGuard, RolesGuard } from '@/common/guards';
-import {
-  LoggerModule,
-  NodeMailerModule,
-  ThrottleModule,
-} from '@/common/modules';
+import { JwtAuthGuard } from '@/common/guards';
+import { ReqLogInterceptor } from '@/common/interceptors';
+import { CacheModule, LoggerModule, ThrottleModule } from '@/common/modules';
 import { validateEnv } from '@/common/utils';
-import { DatabaseModule } from '@/database';
-import { FileModule } from '@/features/file/file.module';
+import { DatabaseModule, SeederModule } from '@/database';
 import { UsersModule } from '@/features/users/users.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './features/auth/auth.module';
+import { AvailabilityModule } from './features/availability/availability.module';
+import { BookingsModule } from './features/bookings/bookings.module';
 import { HealthModule } from './features/health/health.module';
-import { MailModule } from './features/mail/mail.module';
+import { PaymentsModule } from './features/payments/payments.module';
+import { RoomsModule } from './features/rooms/rooms.module';
 
 /**
  * The root module of the application.
@@ -30,11 +29,11 @@ import { MailModule } from './features/mail/mail.module';
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGuard,
+      useClass: ThrottlerGuard,
     },
     {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      provide: APP_INTERCEPTOR,
+      useClass: ReqLogInterceptor,
     },
   ],
   imports: [
@@ -45,15 +44,18 @@ import { MailModule } from './features/mail/mail.module';
       isGlobal: true,
       validate: validateEnv,
     }),
-    NodeMailerModule,
+    CacheModule,
     LoggerModule,
     ThrottleModule,
     DatabaseModule,
+    SeederModule,
     UsersModule,
     AuthModule,
-    MailModule,
     HealthModule,
-    FileModule,
+    AvailabilityModule,
+    RoomsModule,
+    BookingsModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

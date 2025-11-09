@@ -1,94 +1,63 @@
-import { Base } from '@/common/entities';
 import { hashString } from '@/common/utils';
-import { Session } from '@/features/auth/entities/session.entity';
-import { Profile } from '@/features/users/entities/profile.entity';
 import {
+  AfterInsert,
+  AfterLoad,
+  AfterUpdate,
   BeforeInsert,
   Column,
+  CreateDateColumn,
   Entity,
   OneToMany,
-  OneToOne,
-  Relation,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { Booking } from '../../bookings/entities/booking.entity';
 
 /**
- * Entity representing a user account.
- *
- * @property {string} email - The user's email address.
- * @property {string} password - The user's hashed password.
- * @property {string} username - The user's username.
- * @property {boolean} isEmailVerified - Whether the user's email is verified.
- * @property {Date} emailVerifiedAt - The date and time when the email was verified.
- * @property {Relation<Session[]>} sessions - Sessions associated with the user.
- * @property {Relation<Profile>} profile - Profile associated with the user.
+ * Entity representing a user account for the booking platform.
  */
-@Entity()
-export class User extends Base {
-  /**
-   * The user's email address.
-   * @type {string}
-   */
-  @Column({ type: 'varchar', unique: true, nullable: false })
+@Entity('users')
+export class User {
+  @PrimaryGeneratedColumn({ type: 'bigint' })
+  id: number;
+
+  @AfterLoad()
+  @AfterInsert()
+  @AfterUpdate()
+  convertBigIntToNumber() {
+    if (typeof this.id === 'string') {
+      this.id = parseInt(this.id, 10);
+    }
+  }
+
+  @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  /**
-   * The user's hashed password.
-   * @type {string}
-   */
-  @Column({ type: 'varchar', nullable: true })
-  password: string;
+  @Column({ type: 'varchar', length: 255 })
+  password_hash: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  first_name: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  last_name: string;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  @OneToMany('Booking', 'user')
+  bookings: Booking[];
 
   /**
-   * The user's username.
-   * @type {string}
-   */
-  @Column({ type: 'varchar', unique: true, nullable: false })
-  username: string;
-
-  /**
-   * Whether the user's email is verified.
-   * @type {boolean}
-   */
-  @Column({ type: 'boolean', nullable: true, default: false })
-  isEmailVerified: boolean;
-
-  /**
-   * The date and time when the email was verified.
-   * @type {Date}
-   */
-  @Column({ type: 'timestamp', nullable: true })
-  emailVerifiedAt: Date;
-
-  /**
-   * Sessions associated with the user.
-   * @type {Relation<Session[]>}
-   */
-  @OneToMany(() => Session, (session) => session.user, {
-    cascade: true,
-  })
-  sessions: Relation<Session[]>;
-
-  /**
-   * Profile associated with the user.
-   * @type {Relation<Profile>}
-   */
-  @OneToOne(() => Profile, (profile) => profile.user, {
-    cascade: true,
-  })
-  profile: Relation<Profile>;
-
-  /**
-   * Generates username and hashes password before inserting a new user.
-   *
-   * @returns {Promise<void>}
+   * Hashes password before inserting a new user.
    */
   @BeforeInsert()
-  async generateUserInfo(): Promise<void> {
-    if (!this.username) {
-      this.username = this.email.split('@')[0];
-    }
-    if (this.password) {
-      this.password = await hashString(this.password);
+  async hashPassword(): Promise<void> {
+    if (this.password_hash && !this.password_hash.startsWith('$argon2')) {
+      this.password_hash = await hashString(this.password_hash);
     }
   }
 }
