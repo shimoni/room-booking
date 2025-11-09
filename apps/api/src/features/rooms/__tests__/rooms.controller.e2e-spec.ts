@@ -2,18 +2,21 @@ import { AppModule } from '@/app.module';
 import { Env } from '@/common/utils';
 import { DbHelper } from '@/test/helpers/db-helper';
 import fastifyCookie from '@fastify/cookie';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test, TestingModule } from '@nestjs/testing';
+import type { Cache } from 'cache-manager';
 import { DataSource } from 'typeorm';
 
 describe('RoomsController (e2e)', () => {
   let app: NestFastifyApplication;
   let dbHelper: DbHelper;
   let dataSource: DataSource;
+  let cacheManager: Cache;
   let testRoomIds: number[] = [];
   let accessToken: string;
 
@@ -42,6 +45,7 @@ describe('RoomsController (e2e)', () => {
 
     dataSource = moduleFixture.get<DataSource>(DataSource);
     dbHelper = new DbHelper(dataSource);
+    cacheManager = moduleFixture.get<Cache>(CACHE_MANAGER);
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(
       new FastifyAdapter(),
@@ -58,10 +62,17 @@ describe('RoomsController (e2e)', () => {
 
     // Clean and seed database
     await dbHelper.deleteDbData();
+
+    // Clear cache before each test
+    await cacheManager.reset();
+
     await dbHelper.createTestUsers(); // Create test users for authentication
     const rooms = await dbHelper.createTestRooms();
     // Ensure IDs are numbers (they might be strings from BigInt columns)
     testRoomIds = rooms.map((room) => Number(room.id));
+
+    // Create availability for test rooms (required for date filtering)
+    await dbHelper.createAvailability(rooms);
 
     // Get access token for authenticated requests
     accessToken = await signInAndGetToken();
@@ -69,6 +80,7 @@ describe('RoomsController (e2e)', () => {
 
   afterEach(async () => {
     await dbHelper.deleteDbData();
+    await cacheManager.reset();
     await app.close();
   });
 

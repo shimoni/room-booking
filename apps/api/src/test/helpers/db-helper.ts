@@ -132,9 +132,9 @@ export class DbHelper {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Create 30 days of availability for each room
+    // Create 365 days of availability for each room (to cover test date ranges)
     for (const room of rooms) {
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 365; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
 

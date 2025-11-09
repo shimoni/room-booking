@@ -37,8 +37,7 @@ import { join } from 'path';
         charset: 'utf8mb4',
         extra: {
           connectionLimit: 20,
-          acquireTimeout: 60000,
-          timeout: 60000,
+          connectTimeout: 60000,
         },
       }),
     }),

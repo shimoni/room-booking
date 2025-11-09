@@ -1,16 +1,19 @@
 import { AppModule } from '@/app.module';
 import { DbHelper } from '@/test/helpers/db-helper';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test, TestingModule } from '@nestjs/testing';
+import type { Cache } from 'cache-manager';
 import { DataSource } from 'typeorm';
 
 describe('AvailabilityController (e2e)', () => {
   let app: NestFastifyApplication;
   let dbHelper: DbHelper;
   let dataSource: DataSource;
+  let cacheManager: Cache;
   let testRoomId: number;
 
   beforeEach(async () => {
@@ -20,6 +23,7 @@ describe('AvailabilityController (e2e)', () => {
 
     dataSource = moduleFixture.get<DataSource>(DataSource);
     dbHelper = new DbHelper(dataSource);
+    cacheManager = moduleFixture.get<Cache>(CACHE_MANAGER);
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(
       new FastifyAdapter(),
@@ -30,6 +34,10 @@ describe('AvailabilityController (e2e)', () => {
 
     // Clean and seed database
     await dbHelper.deleteDbData();
+
+    // Clear cache before each test
+    await cacheManager.reset();
+
     const rooms = await dbHelper.createTestRooms();
     testRoomId = Number(rooms[0].id);
 
@@ -39,6 +47,7 @@ describe('AvailabilityController (e2e)', () => {
 
   afterEach(async () => {
     await dbHelper.deleteDbData();
+    await cacheManager.reset();
     await app.close();
   });
 
@@ -165,14 +174,21 @@ describe('AvailabilityController (e2e)', () => {
 
   describe('Redis Caching Behavior', () => {
     it('should cache availability check results', async () => {
-      const checkIn = '2025-02-01';
-      const checkOut = '2025-02-05';
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkIn = new Date(today);
+      checkIn.setDate(checkIn.getDate() + 1);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkOut.getDate() + 3);
+
+      const checkInStr = checkIn.toISOString().split('T')[0];
+      const checkOutStr = checkOut.toISOString().split('T')[0];
 
       // First request - cache miss
       const start1 = Date.now();
       const res1 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn}&checkOut=${checkOut}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
       });
       const time1 = Date.now() - start1;
 
@@ -184,7 +200,7 @@ describe('AvailabilityController (e2e)', () => {
       const start2 = Date.now();
       const res2 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn}&checkOut=${checkOut}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
       });
       const time2 = Date.now() - start2;
 
@@ -198,13 +214,20 @@ describe('AvailabilityController (e2e)', () => {
     });
 
     it('should invalidate cache after booking confirmation', async () => {
-      const checkIn = '2025-02-10';
-      const checkOut = '2025-02-15';
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkIn = new Date(today);
+      checkIn.setDate(checkIn.getDate() + 10);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkOut.getDate() + 3);
+
+      const checkInStr = checkIn.toISOString().split('T')[0];
+      const checkOutStr = checkOut.toISOString().split('T')[0];
 
       // First check - should cache as available
       const res1 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn}&checkOut=${checkOut}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
       });
       expect(res1.statusCode).toBe(200);
       const body1 = JSON.parse(res1.body);
@@ -216,13 +239,13 @@ describe('AvailabilityController (e2e)', () => {
          SET status = 'booked'
          WHERE room_id = ? 
          AND date BETWEEN ? AND DATE_SUB(?, INTERVAL 1 DAY)`,
-        [testRoomId, checkIn, checkOut],
+        [testRoomId, checkInStr, checkOutStr],
       );
 
       // Cache should still return old value (cached for 60 seconds)
       const res2 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn}&checkOut=${checkOut}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
       });
       expect(res2.statusCode).toBe(200);
       const body2 = JSON.parse(res2.body);
@@ -236,7 +259,7 @@ describe('AvailabilityController (e2e)', () => {
       // After cache expiration/invalidation, should return fresh data
       const res3 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn}&checkOut=${checkOut}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
       });
       expect(res3.statusCode).toBe(200);
       const body3 = JSON.parse(res3.body);
@@ -246,23 +269,35 @@ describe('AvailabilityController (e2e)', () => {
     });
 
     it('should have separate cache for different date ranges', async () => {
-      // Check availability for two different date ranges
-      const checkIn1 = '2025-03-01';
-      const checkOut1 = '2025-03-05';
-      const checkIn2 = '2025-03-10';
-      const checkOut2 = '2025-03-15';
+      // Check availability for two different date ranges (within 30 days from today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkIn1 = new Date(today);
+      checkIn1.setDate(checkIn1.getDate() + 5);
+      const checkOut1 = new Date(checkIn1);
+      checkOut1.setDate(checkOut1.getDate() + 3);
+
+      const checkIn2 = new Date(today);
+      checkIn2.setDate(checkIn2.getDate() + 15);
+      const checkOut2 = new Date(checkIn2);
+      checkOut2.setDate(checkOut2.getDate() + 3);
+
+      const checkIn1Str = checkIn1.toISOString().split('T')[0];
+      const checkOut1Str = checkOut1.toISOString().split('T')[0];
+      const checkIn2Str = checkIn2.toISOString().split('T')[0];
+      const checkOut2Str = checkOut2.toISOString().split('T')[0];
 
       // Request 1 - cache miss
       const res1 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn1}&checkOut=${checkOut1}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn1Str}&checkOut=${checkOut1Str}`,
       });
       expect(res1.statusCode).toBe(200);
 
       // Request 2 - different dates, separate cache key
       const res2 = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn2}&checkOut=${checkOut2}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn2Str}&checkOut=${checkOut2Str}`,
       });
       expect(res2.statusCode).toBe(200);
 
@@ -271,17 +306,17 @@ describe('AvailabilityController (e2e)', () => {
 
       expect(body1.available).toBe(true);
       expect(body2.available).toBe(true);
-      expect(body1.checkIn).toBe(checkIn1);
-      expect(body2.checkIn).toBe(checkIn2);
+      expect(body1.checkIn).toBe(checkIn1Str);
+      expect(body2.checkIn).toBe(checkIn2Str);
 
       // Both should be cached independently
       const res1b = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn1}&checkOut=${checkOut1}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn1Str}&checkOut=${checkOut1Str}`,
       });
       const res2b = await app.inject({
         method: 'GET',
-        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn2}&checkOut=${checkOut2}`,
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn2Str}&checkOut=${checkOut2Str}`,
       });
 
       expect(JSON.parse(res1b.body)).toEqual(body1);
@@ -289,8 +324,15 @@ describe('AvailabilityController (e2e)', () => {
     });
 
     it('should handle concurrent availability checks efficiently', async () => {
-      const checkIn = '2025-04-01';
-      const checkOut = '2025-04-05';
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkIn = new Date(today);
+      checkIn.setDate(checkIn.getDate() + 3);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkOut.getDate() + 3);
+
+      const checkInStr = checkIn.toISOString().split('T')[0];
+      const checkOutStr = checkOut.toISOString().split('T')[0];
 
       // Make 5 concurrent requests
       const requests = Array(5)
@@ -298,7 +340,7 @@ describe('AvailabilityController (e2e)', () => {
         .map(() =>
           app.inject({
             method: 'GET',
-            url: `/availability/check?roomId=${testRoomId}&checkIn=${checkIn}&checkOut=${checkOut}`,
+            url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
           }),
         );
 
@@ -344,13 +386,36 @@ describe('AvailabilityController (e2e)', () => {
 
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      // Should return true (no bookings for non-existent room)
-      expect(body.available).toBe(true);
+      // Should return false (no availability records for non-existent room)
+      expect(body.available).toBe(false);
     });
 
     it('should handle date strings correctly', async () => {
-      const checkIn = '2025-05-01';
-      const checkOut = '2025-05-10';
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkIn = new Date(today);
+      checkIn.setDate(checkIn.getDate() + 7);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkOut.getDate() + 3);
+
+      const checkInStr = checkIn.toISOString().split('T')[0];
+      const checkOutStr = checkOut.toISOString().split('T')[0];
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.checkIn).toBe(checkInStr);
+      expect(body.checkOut).toBe(checkOutStr);
+    });
+
+    it('should return false for dates without availability records (e.g., far future dates)', async () => {
+      // Test with dates in 2030 - these should not have availability records
+      const checkIn = '2030-06-01';
+      const checkOut = '2030-06-10';
 
       const res = await app.inject({
         method: 'GET',
@@ -359,8 +424,41 @@ describe('AvailabilityController (e2e)', () => {
 
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.checkIn).toBe(checkIn);
-      expect(body.checkOut).toBe(checkOut);
+      // Should return false because there are no availability records for these dates
+      expect(body.available).toBe(false);
+      expect(Number(body.roomId)).toBe(testRoomId);
+    });
+
+    it('should return false for dates partially without availability records', async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkIn = new Date(today);
+      checkIn.setDate(checkIn.getDate() + 5);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkOut.getDate() + 5);
+
+      const checkInStr = checkIn.toISOString().split('T')[0];
+      const checkOutStr = checkOut.toISOString().split('T')[0];
+
+      // Delete some availability records to simulate missing data
+      const midDate = new Date(checkIn);
+      midDate.setDate(midDate.getDate() + 2);
+      const midDateStr = midDate.toISOString().split('T')[0];
+
+      await dataSource.query(
+        `DELETE FROM availability WHERE room_id = ? AND date = ?`,
+        [testRoomId, midDateStr],
+      );
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/availability/check?roomId=${testRoomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      // Should return false because some dates are missing
+      expect(body.available).toBe(false);
     });
   });
 });

@@ -121,7 +121,7 @@ describe('AuthSimpleController (e2e)', () => {
         method: 'POST',
         url: '/auth/sign-in',
         payload: {
-          email: 'test1@example.com',
+          identifier: 'test1@example.com',
           password: 'Test123!',
         },
       });
@@ -149,7 +149,7 @@ describe('AuthSimpleController (e2e)', () => {
         method: 'POST',
         url: '/auth/sign-in',
         payload: {
-          email: 'test1@example.com',
+          identifier: 'test1@example.com',
           password: 'WrongPassword123!',
         },
       });
@@ -164,7 +164,7 @@ describe('AuthSimpleController (e2e)', () => {
         method: 'POST',
         url: '/auth/sign-in',
         payload: {
-          email: 'nonexistent@example.com',
+          identifier: 'nonexistent@example.com',
           password: 'Test123!',
         },
       });
@@ -184,7 +184,7 @@ describe('AuthSimpleController (e2e)', () => {
         method: 'POST',
         url: '/auth/sign-in',
         payload: {
-          email: 'test1@example.com',
+          identifier: 'test1@example.com',
           password: 'Test123!',
         },
       });
@@ -264,7 +264,7 @@ describe('AuthSimpleController (e2e)', () => {
         method: 'POST',
         url: '/auth/sign-in',
         payload: {
-          email: 'test1@example.com',
+          identifier: 'test1@example.com',
           password: 'Test123!',
         },
       });
@@ -324,7 +324,7 @@ describe('AuthSimpleController (e2e)', () => {
         method: 'POST',
         url: '/auth/sign-in',
         payload: {
-          email: 'flowtest@example.com',
+          identifier: 'flowtest@example.com',
           password: 'FlowTest123!',
         },
       });

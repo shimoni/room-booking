@@ -63,6 +63,26 @@ export class AvailabilityService {
 
         this.logger.debug(`Locked ${lockedRows.length} availability rows`);
 
+        // Calculate expected number of days in the range
+        const startDate = new Date(checkIn);
+        const endDateObj = new Date(endDate);
+        const expectedDays =
+          Math.ceil(
+            (endDateObj.getTime() - startDate.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ) + 1;
+
+        // Check if we have all required availability records
+        if (lockedRows.length < expectedDays) {
+          this.logger.warn(
+            `Missing availability records for room ${roomId}. Expected ${expectedDays} days, found ${lockedRows.length}`,
+          );
+          return {
+            success: false,
+            message: `Room is not available for the selected dates (missing availability records for some dates)`,
+          };
+        }
+
         // Step 2: Check if all dates are available
         const unavailableDates = lockedRows.filter((row: AvailabilityRow) => {
           if (row.status === 'booked') {
@@ -213,6 +233,31 @@ export class AvailabilityService {
     const checkOutMinusOne = new Date(checkOut);
     checkOutMinusOne.setDate(checkOutMinusOne.getDate() - 1);
     const endDate = checkOutMinusOne.toISOString().split('T')[0];
+
+    // First, check if we have availability records for this date range
+    const totalDaysInRange = await this.availabilityRepository
+      .createQueryBuilder('a')
+      .where('a.room_id = :roomId', { roomId })
+      .andWhere('a.date BETWEEN :checkIn AND :endDate', { checkIn, endDate })
+      .getCount();
+
+    // Calculate expected number of days
+    const startDate = new Date(checkIn);
+    const endDateObj = new Date(endDate);
+    const expectedDays =
+      Math.ceil(
+        (endDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    // If we don't have records for all days in the range, it's not available
+    if (totalDaysInRange < expectedDays) {
+      this.logger.debug(
+        `Room ${roomId} is not available - missing availability records (has ${totalDaysInRange}, needs ${expectedDays})`,
+      );
+      // Cache the false result
+      await this.cacheManager.set(cacheKey, false, 60 * 1000);
+      return false;
+    }
 
     const unavailableCount = await this.availabilityRepository
       .createQueryBuilder('a')

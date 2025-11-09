@@ -1,3 +1,4 @@
+import { Public } from '@/common/decorators';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AvailabilityService } from './availability.service';
@@ -13,9 +14,10 @@ class CheckAvailabilityDto {
 export class AvailabilityController {
   constructor(private readonly availabilityService: AvailabilityService) {}
 
+  @Public()
   @Get('check')
   @ApiOperation({
-    summary: 'Check if dates are available for a room (Internal use only)',
+    summary: 'Check if dates are available for a room',
   })
   async checkAvailability(@Query() dto: CheckAvailabilityDto) {
     const available = await this.availabilityService.checkAvailability(

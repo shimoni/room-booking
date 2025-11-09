@@ -11,4 +11,8 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
+  testTimeout: 30000,
+  forceExit: true,
+  detectOpenHandles: true,
+  verbose: true,
 };
